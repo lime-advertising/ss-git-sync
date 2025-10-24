@@ -21,6 +21,7 @@ require_once SSGSS_PATH . 'includes/Git.php';
 require_once SSGSS_PATH . 'src/Admin.php';
 require_once SSGSS_PATH . 'src/Importer.php';
 require_once SSGSS_PATH . 'src/Cron.php';
+require_once SSGSS_PATH . 'src/Rest.php';
 require_once SSGSS_PATH . 'src/Plugin.php';
 
 add_action('plugins_loaded', [\SSGSS\Plugin::class, 'init']);

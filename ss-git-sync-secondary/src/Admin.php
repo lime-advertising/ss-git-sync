@@ -90,6 +90,17 @@ class Admin {
                             </td>
                         </tr>
                         <tr>
+                            <th scope="row"><?php esc_html_e('Token Sync Secret', 'ssgs'); ?></th>
+                            <td>
+                                <input type="password" name="settings[remote][secret]" value="" autocomplete="new-password" placeholder="<?php esc_attr_e('Shared secret for remote updates', 'ssgs'); ?>">
+                                <?php if (!empty($settings['remote']['secret'])) : ?>
+                                    <p class="description"><?php esc_html_e('A secret is stored. Leave blank to keep it.', 'ssgs'); ?></p>
+                                    <label><input type="checkbox" name="settings[remote][clear]" value="1"> <?php esc_html_e('Clear stored secret on save', 'ssgs'); ?></label>
+                                <?php endif; ?>
+                                <p class="description"><?php esc_html_e('The master site must send this secret with token distribution requests.', 'ssgs'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th scope="row"><?php esc_html_e('Cron Frequency', 'ssgs'); ?></th>
                             <td>
                                 <select name="settings[cron]">
@@ -229,6 +240,20 @@ class Admin {
             $merged['auth']['token'] = Support\encrypt_secret($newToken);
         } else {
             $merged['auth']['token'] = $settings['auth']['token'] ?? '';
+        }
+
+        $remote = $raw['remote'] ?? [];
+        if (!isset($merged['remote']) || !is_array($merged['remote'])) {
+            $merged['remote'] = [];
+        }
+        $newSecret = isset($remote['secret']) ? trim((string) $remote['secret']) : '';
+        $clearSecret = !empty($remote['clear']);
+        if ($clearSecret) {
+            $merged['remote']['secret'] = '';
+        } elseif ($newSecret !== '') {
+            $merged['remote']['secret'] = Support\encrypt_secret($newSecret);
+        } else {
+            $merged['remote']['secret'] = $settings['remote']['secret'] ?? '';
         }
 
         Plugin::saveSettings($merged);

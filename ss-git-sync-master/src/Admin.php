@@ -14,6 +14,7 @@ class Admin {
         add_action('admin_menu', [__CLASS__, 'addMenu']);
         add_action('admin_post_ssgsm_save_settings', [__CLASS__, 'handleSave']);
         add_action('admin_post_ssgsm_export_now', [__CLASS__, 'exportNow']);
+        add_action('admin_post_ssgsm_push_token', [__CLASS__, 'pushToken']);
     }
 
     public static function addMenu(): void {
@@ -124,6 +125,53 @@ class Admin {
                                 <template id="ssgsm-project-template"><tr><td><input type="text" name="projects[slug][]" placeholder="homepage_hero"></td><td><input type="text" name="projects[file][]" placeholder="homepage_hero.ss3"></td><td><button type="button" class="button" onclick="this.closest('tr').remove();"><?php esc_html_e('Remove', 'ssgs'); ?></button></td></tr></template>
                             </td>
                         </tr>
+                        <tr>
+                            <th scope="row"><?php esc_html_e('Secondary Sites', 'ssgs'); ?></th>
+                            <td>
+                                <p class="description"><?php esc_html_e('List each downstream site that should receive tokens. Secrets are stored encrypted; leave the field blank to keep the existing value.', 'ssgs'); ?></p>
+                                <table class="widefat">
+                                    <thead>
+                                        <tr>
+                                            <th><?php esc_html_e('Label', 'ssgs'); ?></th>
+                                            <th><?php esc_html_e('Site URL', 'ssgs'); ?></th>
+                                            <th><?php esc_html_e('Shared Secret', 'ssgs'); ?></th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ssgsm-secondary-rows">
+                                    <?php
+                                    $secondaries = $settings['secondaries'];
+                                    if (empty($secondaries)) {
+                                        $secondaries = [
+                                            [
+                                                'label'  => '',
+                                                'url'    => '',
+                                                'secret' => '',
+                                            ],
+                                        ];
+                                    }
+                                    foreach ($secondaries as $secondary) :
+                                        ?>
+                                        <tr>
+                                            <td><input type="text" name="secondaries[label][]" value="<?php echo esc_attr($secondary['label'] ?? ''); ?>" placeholder="Site Name"></td>
+                                            <td><input type="url" name="secondaries[url][]" value="<?php echo esc_attr($secondary['url'] ?? ''); ?>" placeholder="https://example.com"></td>
+                                            <td>
+                                                <input type="password" name="secondaries[secret][]" value="" placeholder="<?php esc_attr_e('Enter new secret', 'ssgs'); ?>" autocomplete="new-password">
+                                                <?php if (!empty($secondary['secret'])) : ?>
+                                                    <p class="description"><?php esc_html_e('Secret stored. Leave blank to keep.', 'ssgs'); ?></p>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><button type="button" class="button" onclick="this.closest('tr').remove();"><?php esc_html_e('Remove', 'ssgs'); ?></button></td>
+                                        </tr>
+                                        <?php
+                                    endforeach;
+                                    ?>
+                                    </tbody>
+                                </table>
+                                <p><button class="button" type="button" id="ssgsm-add-secondary"><?php esc_html_e('Add Site', 'ssgs'); ?></button></p>
+                                <template id="ssgsm-secondary-template"><tr><td><input type="text" name="secondaries[label][]" placeholder="Site Name"></td><td><input type="url" name="secondaries[url][]" placeholder="https://example.com"></td><td><input type="password" name="secondaries[secret][]" placeholder="<?php esc_attr_e('Enter new secret', 'ssgs'); ?>" autocomplete="new-password"></td><td><button type="button" class="button" onclick="this.closest('tr').remove();"><?php esc_html_e('Remove', 'ssgs'); ?></button></td></tr></template>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
                 <?php submit_button(__('Save Settings', 'ssgs')); ?>
@@ -138,6 +186,47 @@ class Admin {
             if ($last):
                 printf('<p><em>%s %s (%s)</em></p>', esc_html__('Last export:', 'ssgs'), esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $last)), human_time_diff($last));
             endif;
+            $secondariesForPush = $settings['secondaries'];
+            if (!empty($secondariesForPush)) :
+                ?>
+                <hr>
+                <h2><?php esc_html_e('Distribute HTTPS Token', 'ssgs'); ?></h2>
+                <p><?php esc_html_e('Paste a new Personal Access Token and select the sites that should receive it. Tokens are relayed immediately and are not stored on the master site.', 'ssgs'); ?></p>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <?php wp_nonce_field('ssgsm_push_token'); ?>
+                    <input type="hidden" name="action" value="ssgsm_push_token">
+                    <table class="form-table" role="presentation">
+                        <tbody>
+                            <tr>
+                                <th scope="row"><label for="ssgsm-distribute-token"><?php esc_html_e('Personal Access Token', 'ssgs'); ?></label></th>
+                                <td><input type="password" id="ssgsm-distribute-token" name="token" class="regular-text" autocomplete="new-password" required></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php esc_html_e('Target Sites', 'ssgs'); ?></th>
+                                <td>
+                                    <?php foreach ($secondariesForPush as $secondary) :
+                                        $label = $secondary['label'] ?: $secondary['url'];
+                                        ?>
+                                        <label style="display:block;margin-bottom:0.5rem;">
+                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" <?php checked(true); ?>>
+                                            <?php echo esc_html($label); ?>
+                                        </label>
+                                        <?php
+                                    endforeach; ?>
+                                    <p class="description"><?php esc_html_e('Uncheck any site that should not receive the new token.', 'ssgs'); ?></p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <?php submit_button(__('Push Token to Selected Sites', 'ssgs')); ?>
+                </form>
+                <?php
+            else :
+                ?>
+                <hr>
+                <p><em><?php esc_html_e('Add at least one secondary site to enable token distribution.', 'ssgs'); ?></em></p>
+                <?php
+            endif;
             ?>
         </div>
         <script>
@@ -148,6 +237,18 @@ class Admin {
                         e.preventDefault();
                         const tbody = document.getElementById('ssgsm-project-rows');
                         const tpl = document.getElementById('ssgsm-project-template');
+                        if (tbody && tpl) {
+                            tbody.insertAdjacentHTML('beforeend', tpl.innerHTML);
+                        }
+                    });
+                }
+
+                const secondaryBtn = document.getElementById('ssgsm-add-secondary');
+                if (secondaryBtn) {
+                    secondaryBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const tbody = document.getElementById('ssgsm-secondary-rows');
+                        const tpl = document.getElementById('ssgsm-secondary-template');
                         if (tbody && tpl) {
                             tbody.insertAdjacentHTML('beforeend', tpl.innerHTML);
                         }
@@ -186,6 +287,11 @@ class Admin {
         $settings = Plugin::getSettings();
         $merged   = array_merge($settings, $raw);
         $merged['projects'] = Support\normalize_projects($projects);
+        $secondaryInput = $_POST['secondaries'] ?? [];
+        if (!is_array($secondaryInput)) {
+            $secondaryInput = [];
+        }
+        $merged['secondaries'] = Support\merge_secondary_input($secondaryInput, $settings['secondaries'] ?? []);
 
         $auth = $raw['auth'] ?? [];
         $mode = isset($auth['mode']) && $auth['mode'] === 'https-token' ? 'https-token' : 'ssh';
@@ -238,6 +344,41 @@ class Admin {
         } catch (RuntimeException $e) {
             Logger::log('export', 'Manual export failed: ' . $e->getMessage(), 1);
             set_transient('ssgsm_notice', ['type' => 'error', 'text' => __('Export failed. Check logs.', 'ssgs')], 5);
+        }
+
+        wp_safe_redirect(add_query_arg([], wp_get_referer() ?: admin_url('options-general.php?page=ssgsm')));
+        exit;
+    }
+
+    public static function pushToken(): void {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Insufficient permissions', 'ssgs'));
+        }
+        check_admin_referer('ssgsm_push_token');
+
+        $token = isset($_POST['token']) ? trim((string) $_POST['token']) : '';
+        $targets = array_map('sanitize_text_field', (array) ($_POST['targets'] ?? []));
+        $targets = array_values(array_filter($targets, static fn($value) => $value !== ''));
+
+        if ($token === '' || empty($targets)) {
+            set_transient('ssgsm_notice', ['type' => 'error', 'text' => __('Provide a token and select at least one site.', 'ssgs')], 5);
+            wp_safe_redirect(add_query_arg([], wp_get_referer() ?: admin_url('options-general.php?page=ssgsm')));
+            exit;
+        }
+
+        try {
+            $distributor = new Distributor(Plugin::getSettings());
+            $report = $distributor->pushToken($token, $targets);
+            if (!empty($report['errors'])) {
+                $messages = array_unique(array_map('sanitize_text_field', $report['errors']));
+                set_transient('ssgsm_notice', ['type' => 'error', 'text' => implode(' ', $messages)], 5);
+            } else {
+                $count = (int) ($report['queued'] ?? count($targets));
+                set_transient('ssgsm_notice', ['type' => 'success', 'text' => sprintf(_n('Token distribution queued for %d site.', 'Token distribution queued for %d sites.', $count, 'ssgs'), $count)], 5);
+            }
+        } catch (RuntimeException $e) {
+            Logger::log('distributor', 'Token push failed: ' . $e->getMessage(), 1);
+            set_transient('ssgsm_notice', ['type' => 'error', 'text' => __('Token distribution failed. Check logs for details.', 'ssgs')], 5);
         }
 
         wp_safe_redirect(add_query_arg([], wp_get_referer() ?: admin_url('options-general.php?page=ssgsm')));

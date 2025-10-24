@@ -22,6 +22,7 @@ class Plugin {
             'exports'     => SSGSM_PATH . 'exports/',
             'projects'    => [],
             'project_ids' => [],
+            'secondaries' => [],
             'auth'        => [
                 'mode'     => 'ssh',
                 'token'    => '',

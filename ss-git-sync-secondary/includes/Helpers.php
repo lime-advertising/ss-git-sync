@@ -37,6 +37,7 @@ function load_settings(string $option, array $defaults): array {
     $settings['project_ids'] = sanitize_project_ids($settings['project_ids'] ?? []);
 
     $settings['auth'] = normalize_auth($settings['auth'] ?? []);
+    $settings['remote'] = normalize_remote($settings['remote'] ?? []);
 
     if (empty($settings['exports'])) {
         $settings['exports'] = trailingslashit($defaults['exports'] ?? '');
@@ -51,6 +52,7 @@ function save_settings(string $option, array $settings): void {
     $settings['projects'] = normalize_projects($settings['projects'] ?? []);
     $settings['project_ids'] = sanitize_project_ids($settings['project_ids'] ?? []);
     $settings['auth'] = normalize_auth($settings['auth'] ?? []);
+    $settings['remote'] = normalize_remote($settings['remote'] ?? []);
 
     if (isset($settings['exports'])) {
         $settings['exports'] = trailingslashit(wp_normalize_path($settings['exports']));
@@ -164,4 +166,16 @@ function decrypt_secret(?string $value): string {
     $plain = openssl_decrypt($cipher, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
 
     return $plain === false ? '' : $plain;
+}
+
+function normalize_remote(array $remote): array {
+    if (!is_array($remote)) {
+        $remote = [];
+    }
+
+    $secret = is_string($remote['secret'] ?? '') ? $remote['secret'] : '';
+
+    return [
+        'secret' => $secret,
+    ];
 }

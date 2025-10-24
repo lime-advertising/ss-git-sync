@@ -35,6 +35,7 @@ function load_settings(string $option, array $defaults): array {
     $settings['projects'] = normalize_projects($settings['projects'] ?? []);
 
     $settings['project_ids'] = sanitize_project_ids($settings['project_ids'] ?? []);
+    $settings['secondaries'] = normalize_secondaries($settings['secondaries'] ?? []);
 
     $settings['auth'] = normalize_auth($settings['auth'] ?? []);
 
@@ -59,6 +60,7 @@ function get_last_export(): ?int {
 function save_settings(string $option, array $settings): void {
     $settings['projects'] = normalize_projects($settings['projects'] ?? []);
     $settings['project_ids'] = sanitize_project_ids($settings['project_ids'] ?? []);
+    $settings['secondaries'] = normalize_secondaries($settings['secondaries'] ?? []);
     $settings['auth'] = normalize_auth($settings['auth'] ?? []);
 
     if (isset($settings['exports'])) {
@@ -129,4 +131,66 @@ function decrypt_secret(?string $value): string {
     $plain = openssl_decrypt($cipher, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
 
     return $plain === false ? '' : $plain;
+}
+
+function normalize_secondaries(array $secondaries): array {
+    $normalized = [];
+    foreach ($secondaries as $secondary) {
+        if (!is_array($secondary)) {
+            continue;
+        }
+
+        $label = sanitize_text_field((string) ($secondary['label'] ?? ''));
+        $url = esc_url_raw((string) ($secondary['url'] ?? ''));
+        $secret = is_string($secondary['secret'] ?? '') ? $secondary['secret'] : '';
+
+        if ($label === '' || $url === '') {
+            continue;
+        }
+
+        $normalized[$label] = [
+            'label'  => $label,
+            'url'    => $url,
+            'secret' => $secret,
+        ];
+    }
+
+    return array_values($normalized);
+}
+
+function merge_secondary_input(array $input, array $existing): array {
+    $labels = $input['label'] ?? [];
+    $urls = $input['url'] ?? [];
+    $secrets = $input['secret'] ?? [];
+
+    $indexedExisting = [];
+    foreach (normalize_secondaries($existing) as $secondary) {
+        $indexedExisting[$secondary['label']] = $secondary;
+    }
+
+    $count = max(count($labels), count($urls));
+    $merged = [];
+
+    for ($i = 0; $i < $count; $i++) {
+        $label = sanitize_text_field($labels[$i] ?? '');
+        $url = esc_url_raw($urls[$i] ?? '');
+        $incomingSecret = isset($secrets[$i]) ? trim((string) $secrets[$i]) : '';
+
+        if ($label === '' || $url === '') {
+            continue;
+        }
+
+        $stored = $indexedExisting[$label]['secret'] ?? '';
+        if ($incomingSecret !== '') {
+            $stored = encrypt_secret($incomingSecret);
+        }
+
+        $merged[$label] = [
+            'label'  => $label,
+            'url'    => $url,
+            'secret' => $stored,
+        ];
+    }
+
+    return array_values($merged);
 }

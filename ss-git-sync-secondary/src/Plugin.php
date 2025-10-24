@@ -14,6 +14,7 @@ class Plugin {
     public static function init(): void {
         Admin::init();
         Cron::init();
+        Rest::init();
     }
 
     public static function defaults(): array {
@@ -29,6 +30,9 @@ class Plugin {
                 'username' => '',
             ],
             'cron'        => 'hourly',
+            'remote'      => [
+                'secret' => '',
+            ],
         ];
     }
 
