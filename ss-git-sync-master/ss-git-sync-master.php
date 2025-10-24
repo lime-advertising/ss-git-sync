@@ -20,6 +20,7 @@ require_once SSGSM_PATH . 'includes/Git.php';
 require_once SSGSM_PATH . 'src/Admin.php';
 require_once SSGSM_PATH . 'src/Exporter.php';
 require_once SSGSM_PATH . 'src/Distributor.php';
+require_once SSGSM_PATH . 'src/RemoteImporter.php';
 require_once SSGSM_PATH . 'src/Plugin.php';
 
 add_action('plugins_loaded', [\SSGSM\Plugin::class, 'init']);

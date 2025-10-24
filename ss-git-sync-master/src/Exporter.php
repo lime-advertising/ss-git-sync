@@ -40,14 +40,12 @@ class Exporter {
         }
 
         $auth = $this->settings['auth'] ?? [];
-        if (($auth['mode'] ?? 'ssh') === 'https-token') {
-            $token = Support\decrypt_secret($auth['token'] ?? '');
-            if ($token === '') {
-                throw new RuntimeException('HTTPS token mode selected but no token is stored.');
-            }
-            $username = sanitize_text_field($auth['username'] ?? '');
-            $remote = $this->buildHttpsRemote($remote, $username, $token);
+        $token = Support\decrypt_secret($auth['token'] ?? '');
+        if ($token === '') {
+            throw new RuntimeException('Personal Access Token not configured.');
         }
+        $username = sanitize_text_field($auth['username'] ?? '');
+        $remote = $this->buildHttpsRemote($remote, $username, $token);
 
         return $remote;
     }
@@ -55,7 +53,7 @@ class Exporter {
     private function buildHttpsRemote(string $base, string $username, string $token): string {
         $parts = wp_parse_url($base);
         if (!$parts || empty($parts['host'])) {
-            // Attempt to convert SSH-style URL (git@github.com:org/repo.git)
+            // Convert git@ style URL (git@github.com:org/repo.git) into HTTPS form
             if (preg_match('~git@([^:]+):(.+)~', $base, $m)) {
                 $parts = [
                     'scheme' => 'https',

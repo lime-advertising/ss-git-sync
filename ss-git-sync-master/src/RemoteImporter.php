@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class Distributor {
+class RemoteImporter {
     private array $settings;
 
     public function __construct(?array $settings = null) {
@@ -18,16 +18,10 @@ class Distributor {
     }
 
     /**
-     * @param string $token   Personal access token to distribute.
-     * @param array  $targets Labels of secondary sites selected for update.
+     * @param array $targets Labels of secondary sites selected for import.
      * @return array{queued:int, success:array<string,string>, failed:array<string,string>, errors:array<string>}
      */
-    public function pushToken(string $token, array $targets): array {
-        $token = trim($token);
-        if ($token === '') {
-            throw new RuntimeException('Token missing.');
-        }
-
+    public function trigger(array $targets): array {
         $targets = array_values(array_filter($targets, static fn($value) => is_string($value) && $value !== ''));
         if (empty($targets)) {
             throw new RuntimeException('No secondary sites selected.');
@@ -63,11 +57,11 @@ class Distributor {
                 continue;
             }
 
-            $result = $this->dispatch($secondary, $token, $secretPlain);
+            $result = $this->dispatch($secondary, $secretPlain);
             if (($result['status'] ?? '') === 'success') {
                 $success[$label] = $result['message'] ?? '';
             } else {
-                $failed[$label] = $result['message'] ?? __('Request failed.', 'ssgs');
+                $failed[$label] = $result['message'] ?? __('Remote import failed.', 'ssgs');
             }
         }
 
@@ -80,14 +74,11 @@ class Distributor {
     }
 
     /**
-     * Dispatch the token update request to the secondary site.
-     *
      * @param array  $secondary Secondary site definition.
-     * @param string $token     Token to transmit.
      * @param string $secret    Decrypted shared secret for the site.
      * @return array{status:string,message:string}
      */
-    protected function dispatch(array $secondary, string $token, string $secret): array {
+    protected function dispatch(array $secondary, string $secret): array {
         $endpoint = $this->buildEndpoint($secondary['url'] ?? '');
         if ($endpoint === null) {
             $message = sprintf(__('Invalid URL for %s.', 'ssgs'), $secondary['label'] ?? __('Unnamed site', 'ssgs'));
@@ -96,14 +87,9 @@ class Distributor {
         }
 
         $payload = [
-            'token'        => $token,
             'source'       => home_url(),
             'dispatchedAt' => current_time('mysql'),
         ];
-        $username = $this->settings['auth']['username'] ?? '';
-        if (is_string($username) && $username !== '') {
-            $payload['username'] = $username;
-        }
 
         $args = [
             'timeout'   => 15,
@@ -138,36 +124,28 @@ class Distributor {
         }
 
         if ($code >= 200 && $code < 300) {
-            $status  = is_array($data) ? ($data['status'] ?? 'success') : 'success';
+            $status = is_array($data) ? ($data['status'] ?? 'success') : 'success';
             $message = is_array($data) ? ($data['message'] ?? '') : '';
-            if ($status === 'success') {
-                Logger::log(
-                    'distributor',
-                    sprintf(
-                        'Token distribution succeeded for %s (%s). Status: %s',
-                        $secondary['label'],
-                        $endpoint,
-                        $status
-                    )
-                );
+            Logger::log(
+                'distributor',
+                sprintf(
+                    'Remote import request sent to %s (%s). Status: %s',
+                    $secondary['label'],
+                    $endpoint,
+                    $status
+                )
+            );
 
+            if ($status === 'success') {
                 return [
                     'status'  => 'success',
-                    'message' => $message !== '' ? $message : __('Token delivered.', 'ssgs'),
+                    'message' => $message !== '' ? $message : __('Import completed.', 'ssgs'),
                 ];
             }
 
-            $responseMessage = $message !== '' ? $message : ($body !== '' ? $body : __('Remote site reported an error.', 'ssgs'));
-            $logMessage = sprintf(
-                __('Remote site %1$s reported an error: %2$s', 'ssgs'),
-                $secondary['label'],
-                $responseMessage
-            );
-            Logger::log('distributor', $logMessage, 1);
-
             return [
                 'status'  => 'error',
-                'message' => $responseMessage,
+                'message' => $message !== '' ? $message : __('Remote site reported an error.', 'ssgs'),
             ];
         }
 
@@ -180,7 +158,7 @@ class Distributor {
         );
         Logger::log('distributor', $message, 1);
 
-        return ['status' => 'error', 'message' => $message];
+        return ['status' => 'error', 'message' => $responseMessage];
     }
 
     private function buildEndpoint(string $baseUrl): ?string {
@@ -194,6 +172,6 @@ class Distributor {
             $baseUrl = 'https://' . ltrim($baseUrl, '/');
         }
 
-        return trailingslashit($baseUrl) . 'wp-json/ssgs/v1/token';
+        return trailingslashit($baseUrl) . 'wp-json/ssgs/v1/import';
     }
 }

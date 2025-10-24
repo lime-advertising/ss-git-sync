@@ -63,30 +63,24 @@ class Admin {
                             <td><input type="text" class="regular-text" name="settings[exports]" value="<?php echo esc_attr($settings['exports']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Authentication', 'ssgs'); ?></th>
+                            <th scope="row"><?php esc_html_e('Personal Access Token', 'ssgs'); ?></th>
                             <td>
-                                <fieldset>
-                                    <label><input type="radio" name="settings[auth][mode]" value="ssh" <?php checked($settings['auth']['mode'], 'ssh'); ?>> <?php esc_html_e('SSH deploy key (recommended)', 'ssgs'); ?></label><br>
-                                    <label><input type="radio" name="settings[auth][mode]" value="https-token" <?php checked($settings['auth']['mode'], 'https-token'); ?>> <?php esc_html_e('HTTPS + Personal Access Token', 'ssgs'); ?></label>
-                                </fieldset>
-                                <div id="ssgss-auth-token" <?php if ($settings['auth']['mode'] !== 'https-token') echo 'style="display:none"'; ?>>
-                                    <p class="description"><?php esc_html_e('Paste a GitHub Personal Access Token that can read the repository. Leave the token field blank to keep the stored value.', 'ssgs'); ?></p>
-                                    <p>
-                                        <label><?php esc_html_e('Username (optional)', 'ssgs'); ?><br>
-                                            <input type="text" name="settings[auth][username]" value="<?php echo esc_attr($settings['auth']['username']); ?>">
-                                        </label>
-                                    </p>
-                                    <p>
-                                        <label><?php esc_html_e('Personal Access Token', 'ssgs'); ?><br>
-                                            <input type="password" name="settings[auth][token]" value="" autocomplete="new-password">
-                                        </label>
-                                    </p>
-                                    <?php if (!empty($settings['auth']['token'])) : ?>
-                                        <p class="description"><?php esc_html_e('A token is currently stored. Tick the box below to remove it.', 'ssgs'); ?></p>
-                                        <label><input type="checkbox" name="settings[auth][clear]" value="1"> <?php esc_html_e('Clear stored token on save', 'ssgs'); ?></label>
-                                    <?php endif; ?>
-                                </div>
-                                <p class="description"><?php esc_html_e('Tokens are encrypted in the database. Choose HTTPS mode if you cannot manage SSH keys on this server.', 'ssgs'); ?></p>
+                                <p class="description"><?php esc_html_e('Paste a GitHub Personal Access Token with read access to the repository. Leave the token field blank on later saves to keep the stored value.', 'ssgs'); ?></p>
+                                <p>
+                                    <label><?php esc_html_e('Username (optional)', 'ssgs'); ?><br>
+                                        <input type="text" name="settings[auth][username]" value="<?php echo esc_attr($settings['auth']['username']); ?>">
+                                    </label>
+                                </p>
+                                <p>
+                                    <label><?php esc_html_e('Personal Access Token', 'ssgs'); ?><br>
+                                        <input type="password" name="settings[auth][token]" value="" autocomplete="new-password">
+                                    </label>
+                                </p>
+                                <?php if (!empty($settings['auth']['token'])) : ?>
+                                    <p class="description"><?php esc_html_e('A token is currently stored. Tick the box below to remove it.', 'ssgs'); ?></p>
+                                    <label><input type="checkbox" name="settings[auth][clear]" value="1"> <?php esc_html_e('Clear stored token on save', 'ssgs'); ?></label>
+                                <?php endif; ?>
+                                <p class="description"><?php esc_html_e('Tokens are encrypted before they are stored in the database.', 'ssgs'); ?></p>
                             </td>
                         </tr>
                         <tr>
@@ -98,24 +92,6 @@ class Admin {
                                     <label><input type="checkbox" name="settings[remote][clear]" value="1"> <?php esc_html_e('Clear stored secret on save', 'ssgs'); ?></label>
                                 <?php endif; ?>
                                 <p class="description"><?php esc_html_e('The master site must send this secret with token distribution requests.', 'ssgs'); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php esc_html_e('Cron Frequency', 'ssgs'); ?></th>
-                            <td>
-                                <select name="settings[cron]">
-                                    <?php
-                                    $options = [
-                                        'quarter-hourly' => __('Every 15 Minutes', 'ssgs'),
-                                        'hourly'         => __('Hourly', 'ssgs'),
-                                        'twicedaily'     => __('Every 12 Hours', 'ssgs'),
-                                        'daily'          => __('Daily', 'ssgs'),
-                                    ];
-                                    foreach ($options as $value => $label) {
-                                        printf('<option value="%1$s" %2$s>%3$s</option>', esc_attr($value), selected($settings['cron'], $value, false), esc_html($label));
-                                    }
-                                    ?>
-                                </select>
                             </td>
                         </tr>
                         <tr>
@@ -194,16 +170,6 @@ class Admin {
                     });
                 }
 
-                const authRadios = document.querySelectorAll('input[name="settings[auth][mode]"]');
-                const tokenWrap = document.getElementById('ssgss-auth-token');
-                if (authRadios.length && tokenWrap) {
-                    const toggle = () => {
-                        const selected = document.querySelector('input[name="settings[auth][mode]"]:checked');
-                        tokenWrap.style.display = selected && selected.value === 'https-token' ? '' : 'none';
-                    };
-                    authRadios.forEach(radio => radio.addEventListener('change', toggle));
-                    toggle();
-                }
             })();
         </script>
         <?php
@@ -228,8 +194,6 @@ class Admin {
         $merged['projects'] = Support\normalize_projects($projects);
 
         $auth = $raw['auth'] ?? [];
-        $mode = isset($auth['mode']) && $auth['mode'] === 'https-token' ? 'https-token' : 'ssh';
-        $merged['auth']['mode'] = $mode;
         $merged['auth']['username'] = sanitize_text_field($auth['username'] ?? '');
 
         $newToken = isset($auth['token']) ? trim((string) $auth['token']) : '';
@@ -237,6 +201,11 @@ class Admin {
         if ($clearToken) {
             $merged['auth']['token'] = '';
         } elseif ($newToken !== '') {
+            if (!Support\validate_personal_access_token($newToken, $merged['repo'] ?? '')) {
+                set_transient('ssgss_notice', ['type' => 'error', 'text' => __('Token validation failed. The token was not saved.', 'ssgs')], 5);
+                wp_safe_redirect(add_query_arg([], wp_get_referer() ?: admin_url('options-general.php?page=ssgss')));
+                exit;
+            }
             $merged['auth']['token'] = Support\encrypt_secret($newToken);
         } else {
             $merged['auth']['token'] = $settings['auth']['token'] ?? '';
@@ -257,7 +226,6 @@ class Admin {
         }
 
         Plugin::saveSettings($merged);
-        Cron::refreshSchedule();
 
         set_transient('ssgss_notice', ['type' => 'success', 'text' => __('Settings saved.', 'ssgs')], 5);
         wp_safe_redirect(add_query_arg([], wp_get_referer() ?: admin_url('options-general.php?page=ssgss')));

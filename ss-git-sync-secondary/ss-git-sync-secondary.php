@@ -20,7 +20,6 @@ require_once SSGSS_PATH . 'includes/Logger.php';
 require_once SSGSS_PATH . 'includes/Git.php';
 require_once SSGSS_PATH . 'src/Admin.php';
 require_once SSGSS_PATH . 'src/Importer.php';
-require_once SSGSS_PATH . 'src/Cron.php';
 require_once SSGSS_PATH . 'src/Rest.php';
 require_once SSGSS_PATH . 'src/Plugin.php';
 

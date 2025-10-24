@@ -75,16 +75,10 @@ function sanitize_project_ids(array $ids): array {
 }
 
 function normalize_auth(array $auth): array {
-    $mode = $auth['mode'] ?? 'ssh';
-    if (!in_array($mode, ['ssh', 'https-token'], true)) {
-        $mode = 'ssh';
-    }
-
     $token = is_string($auth['token'] ?? '') ? $auth['token'] : '';
     $username = isset($auth['username']) ? sanitize_text_field((string) $auth['username']) : '';
 
     return [
-        'mode'     => $mode,
         'token'    => $token,
         'username' => $username,
     ];
@@ -178,4 +172,42 @@ function normalize_remote(array $remote): array {
     return [
         'secret' => $secret,
     ];
+}
+
+function validate_personal_access_token(string $token, string $repo): bool {
+    $token = trim($token);
+    if ($token === '') {
+        return false;
+    }
+
+    $host = '';
+    if ($repo !== '') {
+        $parts = wp_parse_url($repo);
+        $host = strtolower($parts['host'] ?? '');
+    }
+
+    // Only validate against GitHub; skip for other hosts.
+    if ($host !== '' && strpos($host, 'github.com') === false) {
+        return true;
+    }
+
+    $response = wp_remote_get(
+        'https://api.github.com/user',
+        [
+            'headers' => [
+                'Authorization' => 'token ' . $token,
+                'Accept'        => 'application/vnd.github+json',
+                'User-Agent'    => 'ss-git-sync',
+            ],
+            'timeout' => 10,
+        ]
+    );
+
+    if (is_wp_error($response)) {
+        return false;
+    }
+
+    $code = wp_remote_retrieve_response_code($response);
+
+    return $code >= 200 && $code < 300;
 }

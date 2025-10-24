@@ -13,7 +13,6 @@ class Plugin {
 
     public static function init(): void {
         Admin::init();
-        Cron::init();
         Rest::init();
     }
 
@@ -25,11 +24,9 @@ class Plugin {
             'projects'    => [],
             'project_ids' => [],
             'auth'        => [
-                'mode'     => 'ssh',
                 'token'    => '',
                 'username' => '',
             ],
-            'cron'        => 'hourly',
             'remote'      => [
                 'secret' => '',
             ],

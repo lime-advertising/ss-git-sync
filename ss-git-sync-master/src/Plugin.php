@@ -24,7 +24,6 @@ class Plugin {
             'project_ids' => [],
             'secondaries' => [],
             'auth'        => [
-                'mode'     => 'ssh',
                 'token'    => '',
                 'username' => '',
             ],

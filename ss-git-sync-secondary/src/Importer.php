@@ -188,14 +188,12 @@ class Importer {
         }
 
         $auth = $this->settings['auth'] ?? [];
-        if (($auth['mode'] ?? 'ssh') === 'https-token') {
-            $token = Support\decrypt_secret($auth['token'] ?? '');
-            if ($token === '') {
-                throw new RuntimeException('HTTPS token mode selected but no token is stored.');
-            }
-            $username = sanitize_text_field($auth['username'] ?? '');
-            $remote = $this->buildHttpsRemote($remote, $username, $token);
+        $token = Support\decrypt_secret($auth['token'] ?? '');
+        if ($token === '') {
+            throw new RuntimeException('Personal Access Token not configured.');
         }
+        $username = sanitize_text_field($auth['username'] ?? '');
+        $remote = $this->buildHttpsRemote($remote, $username, $token);
 
         return $remote;
     }

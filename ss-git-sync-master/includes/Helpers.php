@@ -68,6 +68,14 @@ function save_settings(string $option, array $settings): void {
     }
 
     update_option($option, $settings, false);
+
+    if (isset($settings['secondaries']) && is_array($settings['secondaries'])) {
+        $labels = array_map(
+            static fn($secondary) => sanitize_text_field((string) ($secondary['label'] ?? '')),
+            $settings['secondaries']
+        );
+        prune_secondary_statuses($labels);
+    }
 }
 
 function sanitize_project_ids(array $ids): array {
@@ -84,16 +92,10 @@ function sanitize_project_ids(array $ids): array {
 }
 
 function normalize_auth(array $auth): array {
-    $mode = $auth['mode'] ?? 'ssh';
-    if (!in_array($mode, ['ssh', 'https-token'], true)) {
-        $mode = 'ssh';
-    }
-
     $token = is_string($auth['token'] ?? '') ? $auth['token'] : '';
     $username = isset($auth['username']) ? sanitize_text_field((string) $auth['username']) : '';
 
     return [
-        'mode'     => $mode,
         'token'    => $token,
         'username' => $username,
     ];
@@ -193,4 +195,83 @@ function merge_secondary_input(array $input, array $existing): array {
     }
 
     return array_values($merged);
+}
+
+function get_secondary_statuses(): array {
+    $stored = get_option('ssgsm_secondary_status', []);
+    if (!is_array($stored)) {
+        return [];
+    }
+
+    $normalized = [];
+    foreach ($stored as $label => $data) {
+        $label = sanitize_text_field((string) $label);
+        if ($label === '') {
+            continue;
+        }
+
+        $timestamp = isset($data['timestamp']) && is_numeric($data['timestamp']) ? (int) $data['timestamp'] : 0;
+        $action = sanitize_key($data['action'] ?? '');
+        $status = sanitize_key($data['status'] ?? '');
+        $message = sanitize_textarea_field($data['message'] ?? '');
+
+        $normalized[$label] = [
+            'timestamp' => $timestamp,
+            'action'    => $action,
+            'status'    => $status,
+            'message'   => $message,
+        ];
+    }
+
+    return $normalized;
+}
+
+function record_secondary_status(string $label, array $status): void {
+    $label = sanitize_text_field($label);
+    if ($label === '') {
+        return;
+    }
+
+    $stored = get_option('ssgsm_secondary_status', []);
+    if (!is_array($stored)) {
+        $stored = [];
+    }
+
+    $timestamp = isset($status['timestamp']) && is_numeric($status['timestamp']) ? (int) $status['timestamp'] : time();
+    $action = sanitize_key($status['action'] ?? '');
+    $result = sanitize_key($status['status'] ?? '');
+    $message = sanitize_textarea_field($status['message'] ?? '');
+
+    $stored[$label] = [
+        'timestamp' => $timestamp,
+        'action'    => $action,
+        'status'    => $result,
+        'message'   => $message,
+    ];
+
+    update_option('ssgsm_secondary_status', $stored, false);
+}
+
+function prune_secondary_statuses(array $labels): void {
+    $stored = get_option('ssgsm_secondary_status', []);
+    if (!is_array($stored) || empty($stored)) {
+        return;
+    }
+
+    $valid = array_unique(array_filter(array_map('sanitize_text_field', $labels)));
+
+    $pruned = [];
+    foreach ($stored as $label => $data) {
+        $sanitizedLabel = sanitize_text_field((string) $label);
+        if ($sanitizedLabel === '') {
+            continue;
+        }
+        if (in_array($sanitizedLabel, $valid, true)) {
+            $pruned[$sanitizedLabel] = $data;
+        }
+    }
+
+    if ($pruned !== $stored) {
+        update_option('ssgsm_secondary_status', $pruned, false);
+    }
 }
