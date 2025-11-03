@@ -210,11 +210,15 @@ class Admin {
                             <tr>
                                 <th scope="row"><?php esc_html_e('Target Sites', 'ssgs'); ?></th>
                                 <td>
+                                    <p style="margin-bottom:0.5rem;" data-ssgsm-toggle-group="token">
+                                        <button type="button" class="button-link" data-action="select"><?php esc_html_e('Select all', 'ssgs'); ?></button>
+                                        <button type="button" class="button-link" data-action="deselect"><?php esc_html_e('Deselect all', 'ssgs'); ?></button>
+                                    </p>
                                     <?php foreach ($secondariesForPush as $secondary) :
                                         $label = $secondary['label'] ?: $secondary['url'];
                                         ?>
                                         <label style="display:block;margin-bottom:0.5rem;">
-                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" <?php checked(true); ?>>
+                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="token" <?php checked(true); ?>>
                                             <?php echo esc_html($label); ?>
                                         </label>
                                         <?php
@@ -246,11 +250,15 @@ class Admin {
                             <tr>
                                 <th scope="row"><?php esc_html_e('Target Sites', 'ssgs'); ?></th>
                                 <td>
+                                    <p style="margin-bottom:0.5rem;" data-ssgsm-toggle-group="import">
+                                        <button type="button" class="button-link" data-action="select"><?php esc_html_e('Select all', 'ssgs'); ?></button>
+                                        <button type="button" class="button-link" data-action="deselect"><?php esc_html_e('Deselect all', 'ssgs'); ?></button>
+                                    </p>
                                     <?php foreach ($secondariesForPush as $secondary) :
                                         $label = $secondary['label'] ?: $secondary['url'];
                                         ?>
                                         <label style="display:block;margin-bottom:0.5rem;">
-                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" <?php checked(true); ?>>
+                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="import" <?php checked(true); ?>>
                                             <?php echo esc_html($label); ?>
                                         </label>
                                         <?php
@@ -340,6 +348,27 @@ class Admin {
                         }
                     });
                 }
+
+                // Provide select/deselect toggles for grouped target checkboxes.
+                const toggleContainers = document.querySelectorAll('[data-ssgsm-toggle-group]');
+                toggleContainers.forEach(function(container) {
+                    container.addEventListener('click', function(event) {
+                        const trigger = event.target.closest('button[data-action]');
+                        if (!trigger) {
+                            return;
+                        }
+                        event.preventDefault();
+                        const action = trigger.getAttribute('data-action');
+                        const group = container.getAttribute('data-ssgsm-toggle-group');
+                        if (!action || !group) {
+                            return;
+                        }
+                        const shouldCheck = action === 'select';
+                        document.querySelectorAll('input[type="checkbox"][data-ssgsm-group="' + group + '"]').forEach(function(checkbox) {
+                            checkbox.checked = shouldCheck;
+                        });
+                    });
+                });
 
             })();
         </script>
