@@ -47,6 +47,16 @@ class Rest {
                 'permission_callback' => [__CLASS__, 'authorize'],
             ]
         );
+
+        register_rest_route(
+            'ssgs/v1',
+            '/clear-cache',
+            [
+                'methods'             => 'POST',
+                'callback'            => [__CLASS__, 'clearCache'],
+                'permission_callback' => [__CLASS__, 'authorize'],
+            ]
+        );
     }
 
     public static function authorize(WP_REST_Request $request) {
@@ -144,5 +154,127 @@ class Rest {
                 500
             );
         }
+    }
+
+    public static function clearCache(WP_REST_Request $request) {
+        if (!class_exists('Nextend\\SmartSlider3\\PublicApi\\Project')) {
+            return new WP_REST_Response(
+                [
+                    'status'  => 'error',
+                    'message' => __('Smart Slider is not available on this site.', 'ssgs'),
+                ],
+                500
+            );
+        }
+
+        $settings = Plugin::getSettings();
+        $projects = $settings['projects'] ?? [];
+        if (empty($projects)) {
+            return new WP_REST_Response(
+                [
+                    'status'  => 'success',
+                    'message' => __('No projects configured. Nothing to clear.', 'ssgs'),
+                    'cleared' => [],
+                ],
+                200
+            );
+        }
+
+        $projectIds = $settings['project_ids'] ?? [];
+        $updatedIds = false;
+        $cleared = [];
+        $failed = [];
+
+        foreach ($projects as $slug => $_file) {
+            $slugKey = sanitize_title($slug);
+            if ($slugKey === '') {
+                continue;
+            }
+
+            $projectId = isset($projectIds[$slug]) ? (int) $projectIds[$slug] : 0;
+            if (!$projectId) {
+                $projectId = self::resolveSliderId($slugKey);
+                if ($projectId) {
+                    $projectIds[$slug] = $projectId;
+                    $updatedIds = true;
+                }
+            }
+
+            if (!$projectId) {
+                $failed[$slug] = __('Unable to locate slider on the secondary site.', 'ssgs');
+                continue;
+            }
+
+            try {
+                \Nextend\SmartSlider3\PublicApi\Project::clearCache($projectId);
+                $cleared[] = $slug;
+            } catch (\Throwable $e) {
+                $failed[$slug] = $e->getMessage();
+                Logger::log('rest', 'Cache clear failed for ' . $slug . ': ' . $e->getMessage(), 1);
+            }
+        }
+
+        if ($updatedIds) {
+            $settings['project_ids'] = $projectIds;
+            Plugin::saveSettings($settings);
+        }
+
+        if (!empty($failed)) {
+            $message = sprintf(
+                __('Cache clear failed for: %s.', 'ssgs'),
+                implode(', ', array_map('sanitize_text_field', array_keys($failed)))
+            );
+            if (!empty($cleared)) {
+                $message .= ' ' . sprintf(
+                    __('Cleared for: %s.', 'ssgs'),
+                    implode(', ', array_map('sanitize_text_field', $cleared))
+                );
+            }
+
+            return new WP_REST_Response(
+                [
+                    'status'  => 'error',
+                    'message' => $message,
+                    'cleared' => $cleared,
+                    'failed'  => $failed,
+                ],
+                500
+            );
+        }
+
+        Logger::log('rest', 'Cache cleared remotely for projects: ' . implode(', ', $cleared));
+
+        return new WP_REST_Response(
+            [
+                'status'  => 'success',
+                'message' => __('Cache cleared on the secondary site.', 'ssgs'),
+                'cleared' => $cleared,
+            ],
+            200
+        );
+    }
+
+    private static function resolveSliderId(string $slug): ?int {
+        if (!class_exists('Nextend\\SmartSlider3\\Application\\ApplicationSmartSlider3') || !class_exists('Nextend\\SmartSlider3\\Application\\Model\\ModelSliders')) {
+            return null;
+        }
+
+        try {
+            $application = \Nextend\SmartSlider3\Application\ApplicationSmartSlider3::getInstance();
+            $adminContext = $application->getApplicationTypeAdmin();
+            if (!$adminContext) {
+                return null;
+            }
+
+            $model = new \Nextend\SmartSlider3\Application\Model\ModelSliders($adminContext);
+            $row = $model->getByAlias($slug);
+            if (is_array($row) && isset($row['id'])) {
+                return (int) $row['id'];
+            }
+        } catch (\Throwable $e) {
+            Logger::log('rest', 'Failed to resolve slider id for ' . $slug . ': ' . $e->getMessage(), 1);
+        }
+
+        return null;
     }
 }
