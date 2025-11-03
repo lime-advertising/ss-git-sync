@@ -148,6 +148,74 @@ class Admin {
                 .ssgsm-toggle-buttons .button-link {
                     padding: 0;
                 }
+                .ssgsm-toggle-search {
+                    margin-bottom: 0.75rem;
+                }
+                .ssgsm-toggle-search input[type="search"] {
+                    width: 100%;
+                    max-width: 320px;
+                }
+                .ssgsm-toggle-grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.6rem;
+                }
+                .ssgsm-toggle-option {
+                    position: relative;
+                    display: inline-flex;
+                }
+                .ssgsm-toggle-option input {
+                    position: absolute;
+                    inset: 0;
+                    margin: 0;
+                    opacity: 0;
+                    pointer-events: none;
+                }
+                .ssgsm-toggle-option span {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    padding: 0.45rem 0.9rem;
+                    border-radius: 999px;
+                    border: 1px solid #c3c4c7;
+                    background: #f6f7f7;
+                    color: #1d2327;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+                }
+                .ssgsm-toggle-option span::before {
+                    content: "\f147";
+                    font-family: dashicons;
+                    font-size: 16px;
+                    line-height: 1;
+                    opacity: 0;
+                    transform: scale(0.6);
+                    transition: opacity 0.15s ease, transform 0.15s ease;
+                }
+                .ssgsm-toggle-option span:hover {
+                    border-color: #2271b1;
+                    color: #2271b1;
+                }
+                .ssgsm-toggle-option input:checked + span {
+                    background: #2271b1;
+                    color: #fff;
+                    border-color: #2271b1;
+                }
+                .ssgsm-toggle-option input:checked + span:hover {
+                    color: #fff;
+                }
+                .ssgsm-toggle-option input:checked + span::before {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                .ssgsm-toggle-option input:focus-visible + span {
+                    outline: 2px solid #2271b1;
+                    outline-offset: 2px;
+                }
+                .ssgsm-toggle-option.is-hidden {
+                    display: none;
+                }
                 .ssgsm-panel__content .description {
                     color: #50575e;
                 }
@@ -155,12 +223,66 @@ class Admin {
                 .ssgsm-status-table th {
                     vertical-align: top;
                 }
+                .ssgsm-status-filters {
+                    display: flex;
+                    gap: 0.6rem;
+                    margin-bottom: 0.75rem;
+                    flex-wrap: wrap;
+                }
+                .ssgsm-chip-button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    padding: 0.45rem 0.9rem;
+                    border-radius: 999px;
+                    border: 1px solid #c3c4c7;
+                    background: #f6f7f7;
+                    color: #1d2327;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+                }
+                .ssgsm-chip-button:hover {
+                    border-color: #2271b1;
+                    color: #2271b1;
+                }
+                .ssgsm-chip-button.is-active {
+                    background: #2271b1;
+                    color: #fff;
+                    border-color: #2271b1;
+                }
+                .ssgsm-chip-button:focus-visible {
+                    outline: 2px solid #2271b1;
+                    outline-offset: 2px;
+                }
+                .ssgsm-status-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 0.25rem 0.55rem;
+                    border-radius: 999px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.4px;
+                }
+                .ssgsm-status-badge--success {
+                    background: #e6f4ea;
+                    color: #1c7c39;
+                }
+                .ssgsm-status-badge--error {
+                    background: #fde7e9;
+                    color: #8a1d26;
+                }
+                .ssgsm-status-badge--unknown {
+                    background: #ececec;
+                    color: #50575e;
+                }
             </style>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ssgsm-form">
                 <?php wp_nonce_field('ssgsm_save_settings'); ?>
                 <input type="hidden" name="action" value="ssgsm_save_settings">
                 <div class="ssgsm-panels">
-                    <section class="ssgsm-panel is-open" data-ssgsm-collapsible>
+                    <section class="ssgsm-panel is-open" data-ssgsm-collapsible data-ssgsm-panel-id="settings">
                         <button type="button" class="ssgsm-panel__header" aria-expanded="true" aria-controls="ssgsm-panel-settings">
                             <span class="ssgsm-panel__title"><?php esc_html_e('Repository & Access', 'ssgs'); ?></span>
                             <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -212,7 +334,7 @@ class Admin {
                             </table>
                         </div>
                     </section>
-                    <section class="ssgsm-panel" data-ssgsm-collapsible>
+                    <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="projects">
                         <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-projects">
                             <span class="ssgsm-panel__title"><?php esc_html_e('Project Map', 'ssgs'); ?></span>
                             <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -249,7 +371,7 @@ class Admin {
                             <template id="ssgsm-project-template"><tr><td><input type="text" name="projects[slug][]" placeholder="homepage_hero"></td><td><input type="text" name="projects[file][]" placeholder="homepage_hero.ss3"></td><td><button type="button" class="button" onclick="this.closest('tr').remove();"><?php esc_html_e('Remove', 'ssgs'); ?></button></td></tr></template>
                         </div>
                     </section>
-                    <section class="ssgsm-panel" data-ssgsm-collapsible>
+                    <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="secondaries">
                         <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-secondaries">
                             <span class="ssgsm-panel__title"><?php esc_html_e('Secondary Sites', 'ssgs'); ?></span>
                             <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -303,7 +425,7 @@ class Admin {
                 <?php submit_button(__('Save Settings', 'ssgs')); ?>
             </form>
             <div class="ssgsm-panels">
-                <section class="ssgsm-panel" data-ssgsm-collapsible>
+                <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="export">
                     <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-export">
                         <span class="ssgsm-panel__title"><?php esc_html_e('Manual Export', 'ssgs'); ?></span>
                         <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -329,7 +451,7 @@ class Admin {
                         <?php endif; ?>
                     </div>
                 </section>
-                <section class="ssgsm-panel" data-ssgsm-collapsible>
+                <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="token">
                     <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-token">
                         <span class="ssgsm-panel__title"><?php esc_html_e('Distribute HTTPS Token', 'ssgs'); ?></span>
                         <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -353,15 +475,21 @@ class Admin {
                                                     <button type="button" class="button-link" data-action="select"><?php esc_html_e('Select all', 'ssgs'); ?></button>
                                                     <button type="button" class="button-link" data-action="deselect"><?php esc_html_e('Deselect all', 'ssgs'); ?></button>
                                                 </div>
-                                                <?php foreach ($secondariesForPush as $secondary) :
-                                                    $label = $secondary['label'] ?: $secondary['url'];
-                                                    ?>
-                                                    <label style="display:block;margin-bottom:0.5rem;">
-                                                        <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="token" <?php checked(true); ?>>
-                                                        <?php echo esc_html($label); ?>
-                                                    </label>
-                                                    <?php
-                                                endforeach; ?>
+                                                <div class="ssgsm-toggle-search">
+                                                    <label class="screen-reader-text" for="ssgsm-filter-token"><?php esc_html_e('Filter sites', 'ssgs'); ?></label>
+                                                    <input type="search" id="ssgsm-filter-token" placeholder="<?php esc_attr_e('Filter sites…', 'ssgs'); ?>" data-ssgsm-filter="token">
+                                                </div>
+                                                <div class="ssgsm-toggle-grid">
+                                                    <?php foreach ($secondariesForPush as $secondary) :
+                                                        $label = $secondary['label'] ?: $secondary['url'];
+                                                        ?>
+                                                        <label class="ssgsm-toggle-option">
+                                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="token" <?php checked(true); ?>>
+                                                            <span><?php echo esc_html($label); ?></span>
+                                                        </label>
+                                                        <?php
+                                                    endforeach; ?>
+                                                </div>
                                                 <p class="description"><?php esc_html_e('Uncheck any site that should not receive the new token.', 'ssgs'); ?></p>
                                             </td>
                                         </tr>
@@ -374,7 +502,7 @@ class Admin {
                         <?php endif; ?>
                     </div>
                 </section>
-                <section class="ssgsm-panel" data-ssgsm-collapsible>
+                <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="import">
                     <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-import">
                         <span class="ssgsm-panel__title"><?php esc_html_e('Trigger Remote Import', 'ssgs'); ?></span>
                         <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -394,15 +522,21 @@ class Admin {
                                                     <button type="button" class="button-link" data-action="select"><?php esc_html_e('Select all', 'ssgs'); ?></button>
                                                     <button type="button" class="button-link" data-action="deselect"><?php esc_html_e('Deselect all', 'ssgs'); ?></button>
                                                 </div>
-                                                <?php foreach ($secondariesForPush as $secondary) :
-                                                    $label = $secondary['label'] ?: $secondary['url'];
-                                                    ?>
-                                                    <label style="display:block;margin-bottom:0.5rem;">
-                                                        <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="import" <?php checked(true); ?>>
-                                                        <?php echo esc_html($label); ?>
-                                                    </label>
-                                                    <?php
-                                                endforeach; ?>
+                                                <div class="ssgsm-toggle-search">
+                                                    <label class="screen-reader-text" for="ssgsm-filter-import"><?php esc_html_e('Filter sites', 'ssgs'); ?></label>
+                                                    <input type="search" id="ssgsm-filter-import" placeholder="<?php esc_attr_e('Filter sites…', 'ssgs'); ?>" data-ssgsm-filter="import">
+                                                </div>
+                                                <div class="ssgsm-toggle-grid">
+                                                    <?php foreach ($secondariesForPush as $secondary) :
+                                                        $label = $secondary['label'] ?: $secondary['url'];
+                                                        ?>
+                                                        <label class="ssgsm-toggle-option">
+                                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="import" <?php checked(true); ?>>
+                                                            <span><?php echo esc_html($label); ?></span>
+                                                        </label>
+                                                        <?php
+                                                    endforeach; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -414,7 +548,7 @@ class Admin {
                         <?php endif; ?>
                     </div>
                 </section>
-                <section class="ssgsm-panel" data-ssgsm-collapsible>
+                <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="cache">
                     <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-cache">
                         <span class="ssgsm-panel__title"><?php esc_html_e('Clear Remote Cache', 'ssgs'); ?></span>
                         <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -434,15 +568,21 @@ class Admin {
                                                     <button type="button" class="button-link" data-action="select"><?php esc_html_e('Select all', 'ssgs'); ?></button>
                                                     <button type="button" class="button-link" data-action="deselect"><?php esc_html_e('Deselect all', 'ssgs'); ?></button>
                                                 </div>
-                                                <?php foreach ($secondariesForPush as $secondary) :
-                                                    $label = $secondary['label'] ?: $secondary['url'];
-                                                    ?>
-                                                    <label style="display:block;margin-bottom:0.5rem;">
-                                                        <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="cache" <?php checked(true); ?>>
-                                                        <?php echo esc_html($label); ?>
-                                                    </label>
-                                                    <?php
-                                                endforeach; ?>
+                                                <div class="ssgsm-toggle-search">
+                                                    <label class="screen-reader-text" for="ssgsm-filter-cache"><?php esc_html_e('Filter sites', 'ssgs'); ?></label>
+                                                    <input type="search" id="ssgsm-filter-cache" placeholder="<?php esc_attr_e('Filter sites…', 'ssgs'); ?>" data-ssgsm-filter="cache">
+                                                </div>
+                                                <div class="ssgsm-toggle-grid">
+                                                    <?php foreach ($secondariesForPush as $secondary) :
+                                                        $label = $secondary['label'] ?: $secondary['url'];
+                                                        ?>
+                                                        <label class="ssgsm-toggle-option">
+                                                            <input type="checkbox" name="targets[]" value="<?php echo esc_attr($secondary['label']); ?>" data-ssgsm-group="cache" <?php checked(true); ?>>
+                                                            <span><?php echo esc_html($label); ?></span>
+                                                        </label>
+                                                        <?php
+                                                    endforeach; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -455,7 +595,7 @@ class Admin {
                     </div>
                 </section>
                 <?php if ($hasSecondaries) : ?>
-                    <section class="ssgsm-panel" data-ssgsm-collapsible>
+                    <section class="ssgsm-panel" data-ssgsm-collapsible data-ssgsm-panel-id="status">
                         <button type="button" class="ssgsm-panel__header" aria-expanded="false" aria-controls="ssgsm-panel-status">
                             <span class="ssgsm-panel__title"><?php esc_html_e('Secondary Site Status', 'ssgs'); ?></span>
                             <span class="dashicons dashicons-arrow-down-alt2 ssgsm-panel__icon"></span>
@@ -472,6 +612,11 @@ class Admin {
                                 'error'   => __('Error', 'ssgs'),
                             ];
                             ?>
+                            <div class="ssgsm-status-filters" data-ssgsm-status-filters>
+                                <button type="button" class="ssgsm-chip-button is-active" data-status-filter="all"><?php esc_html_e('All', 'ssgs'); ?></button>
+                                <button type="button" class="ssgsm-chip-button" data-status-filter="success"><?php esc_html_e('Success', 'ssgs'); ?></button>
+                                <button type="button" class="ssgsm-chip-button" data-status-filter="error"><?php esc_html_e('Errors', 'ssgs'); ?></button>
+                            </div>
                             <table class="widefat fixed striped ssgsm-status-table">
                                 <thead>
                                     <tr>
@@ -501,13 +646,27 @@ class Admin {
                                             $timeHtml = esc_html__('—', 'ssgs');
                                         }
                                         ?>
-                                        <tr>
-                                            <td><?php echo esc_html($labelDisplay); ?></td>
-                                            <td><?php echo esc_html($actionDisplay); ?></td>
-                                            <td><?php echo esc_html($resultDisplay); ?></td>
-                                            <td><?php echo wp_kses_post($timeHtml); ?></td>
-                                            <td><?php echo $messageText !== '' ? nl2br(esc_html($messageText)) : esc_html__('—', 'ssgs'); ?></td>
-                                        </tr>
+                            <?php
+                            $rowStatus = $result !== '' ? sanitize_key($result) : 'unknown';
+                            if ($rowStatus === '') {
+                                $rowStatus = 'unknown';
+                            }
+                            $badgeClass = 'ssgsm-status-badge';
+                            if ($rowStatus === 'success') {
+                                $badgeClass .= ' ssgsm-status-badge--success';
+                            } elseif ($rowStatus === 'error') {
+                                $badgeClass .= ' ssgsm-status-badge--error';
+                            } else {
+                                $badgeClass .= ' ssgsm-status-badge--unknown';
+                            }
+                            ?>
+                            <tr data-ssgsm-status-row data-status="<?php echo esc_attr($rowStatus); ?>">
+                                <td><?php echo esc_html($labelDisplay); ?></td>
+                                <td><?php echo esc_html($actionDisplay); ?></td>
+                                <td><span class="<?php echo esc_attr($badgeClass); ?>"><?php echo esc_html($resultDisplay); ?></span></td>
+                                <td><?php echo wp_kses_post($timeHtml); ?></td>
+                                <td><?php echo $messageText !== '' ? nl2br(esc_html($messageText)) : esc_html__('—', 'ssgs'); ?></td>
+                            </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
@@ -518,6 +677,41 @@ class Admin {
         </div>
         <script>
             (function() {
+                const storageKey = 'ssgsmPanelState';
+                const storageAvailable = (function() {
+                    try {
+                        const testKey = '__ssgsm_storage_test__';
+                        window.localStorage.setItem(testKey, '1');
+                        window.localStorage.removeItem(testKey);
+                        return true;
+                    } catch (error) {
+                        return false;
+                    }
+                })();
+
+                let panelState = {};
+                if (storageAvailable) {
+                    try {
+                        const saved = window.localStorage.getItem(storageKey);
+                        if (saved) {
+                            panelState = JSON.parse(saved) || {};
+                        }
+                    } catch (error) {
+                        panelState = {};
+                    }
+                }
+
+                const savePanelState = function() {
+                    if (!storageAvailable) {
+                        return;
+                    }
+                    try {
+                        window.localStorage.setItem(storageKey, JSON.stringify(panelState));
+                    } catch (error) {
+                        // no-op
+                    }
+                };
+
                 const projectAddButton = document.getElementById('ssgsm-add-project');
                 if (projectAddButton) {
                     projectAddButton.addEventListener('click', function(event) {
@@ -562,27 +756,80 @@ class Admin {
                     });
                 });
 
+                const toggleFilters = document.querySelectorAll('[data-ssgsm-filter]');
+                toggleFilters.forEach(function(input) {
+                    const group = input.getAttribute('data-ssgsm-filter');
+                    if (!group) {
+                        return;
+                    }
+                    const applyFilter = function() {
+                        const term = input.value.trim().toLowerCase();
+                        document.querySelectorAll('input[type="checkbox"][data-ssgsm-group="' + group + '"]').forEach(function(checkbox) {
+                            const option = checkbox.closest('.ssgsm-toggle-option');
+                            if (!option) {
+                                return;
+                            }
+                            const labelText = option.textContent ? option.textContent.toLowerCase() : '';
+                            const match = term === '' || labelText.indexOf(term) !== -1;
+                            option.classList.toggle('is-hidden', !match);
+                        });
+                    };
+                    input.addEventListener('input', applyFilter);
+                    applyFilter();
+                });
+
                 const collapsiblePanels = document.querySelectorAll('[data-ssgsm-collapsible]');
                 collapsiblePanels.forEach(function(panel) {
                     const header = panel.querySelector('.ssgsm-panel__header');
                     const content = panel.querySelector('.ssgsm-panel__content');
+                    const identifier = panel.getAttribute('data-ssgsm-panel-id');
                     if (!header || !content) {
                         return;
                     }
-                    if (panel.classList.contains('is-open')) {
-                        header.setAttribute('aria-expanded', 'true');
-                        content.hidden = false;
-                    } else {
-                        header.setAttribute('aria-expanded', 'false');
-                        content.hidden = true;
+
+                    let isOpen = panel.classList.contains('is-open');
+                    if (storageAvailable && identifier && Object.prototype.hasOwnProperty.call(panelState, identifier)) {
+                        isOpen = !!panelState[identifier];
+                        panel.classList.toggle('is-open', isOpen);
                     }
+
+                    header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    content.hidden = !isOpen;
+
                     header.addEventListener('click', function() {
-                        const isOpen = panel.classList.toggle('is-open');
-                        header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-                        content.hidden = !isOpen;
+                        const nextState = !panel.classList.contains('is-open');
+                        panel.classList.toggle('is-open', nextState);
+                        header.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+                        content.hidden = !nextState;
+                        if (storageAvailable && identifier) {
+                            panelState[identifier] = nextState;
+                            savePanelState();
+                        }
                     });
                 });
 
+                const statusFilterContainer = document.querySelector('[data-ssgsm-status-filters]');
+                if (statusFilterContainer) {
+                    const filterButtons = statusFilterContainer.querySelectorAll('[data-status-filter]');
+                    const statusRows = document.querySelectorAll('[data-ssgsm-status-row]');
+
+                    statusFilterContainer.addEventListener('click', function(event) {
+                        const button = event.target.closest('[data-status-filter]');
+                        if (!button) {
+                            return;
+                        }
+                        event.preventDefault();
+                        const filter = button.getAttribute('data-status-filter');
+                        filterButtons.forEach(function(otherButton) {
+                            otherButton.classList.toggle('is-active', otherButton === button);
+                        });
+                        statusRows.forEach(function(row) {
+                            const rowStatus = row.getAttribute('data-status') || '';
+                            const shouldShow = filter === 'all' || rowStatus === filter;
+                            row.hidden = !shouldShow;
+                        });
+                    });
+                }
             })();
         </script>
         <?php
