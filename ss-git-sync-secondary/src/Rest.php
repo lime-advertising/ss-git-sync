@@ -169,12 +169,18 @@ class Rest {
 
         $settings = Plugin::getSettings();
         $projects = $settings['projects'] ?? [];
+        $wpCache = self::flushWordPressCache();
+        $sgCache = self::purgeSiteGroundCache();
         if (empty($projects)) {
+            $message = __('No projects configured. Nothing to clear.', 'ssgs');
+            $message = self::appendCacheNotes($message, $wpCache, $sgCache);
             return new WP_REST_Response(
                 [
                     'status'  => 'success',
-                    'message' => __('No projects configured. Nothing to clear.', 'ssgs'),
+                    'message' => $message,
                     'cleared' => [],
+                    'wpCache' => $wpCache,
+                    'sgCache' => $sgCache,
                 ],
                 200
             );
@@ -230,6 +236,7 @@ class Rest {
                     implode(', ', array_map('sanitize_text_field', $cleared))
                 );
             }
+            $message = self::appendCacheNotes($message, $wpCache, $sgCache);
 
             return new WP_REST_Response(
                 [
@@ -237,18 +244,24 @@ class Rest {
                     'message' => $message,
                     'cleared' => $cleared,
                     'failed'  => $failed,
+                    'wpCache' => $wpCache,
+                    'sgCache' => $sgCache,
                 ],
                 500
             );
         }
 
         Logger::log('rest', 'Cache cleared remotely for projects: ' . implode(', ', $cleared));
+        $message = __('Cache cleared on the secondary site.', 'ssgs');
+        $message = self::appendCacheNotes($message, $wpCache, $sgCache);
 
         return new WP_REST_Response(
             [
                 'status'  => 'success',
-                'message' => __('Cache cleared on the secondary site.', 'ssgs'),
+                'message' => $message,
                 'cleared' => $cleared,
+                'wpCache' => $wpCache,
+                'sgCache' => $sgCache,
             ],
             200
         );
@@ -276,5 +289,94 @@ class Rest {
         }
 
         return null;
+    }
+
+    private static function flushWordPressCache(): array {
+        if (!function_exists('wp_cache_flush')) {
+            return [
+                'status'  => 'skipped',
+                'message' => __('wp_cache_flush() is not available on this site.', 'ssgs'),
+            ];
+        }
+
+        try {
+            $flushed = wp_cache_flush();
+        } catch (\Throwable $e) {
+            Logger::log('rest', 'wp_cache_flush threw an exception: ' . $e->getMessage(), 1);
+
+            return [
+                'status'  => 'failed',
+                'message' => $e->getMessage(),
+            ];
+        }
+
+        if ($flushed) {
+            Logger::log('rest', 'WordPress object cache flushed via REST.');
+
+            return [
+                'status'  => 'flushed',
+                'message' => __('WordPress object cache flushed.', 'ssgs'),
+            ];
+        }
+
+        Logger::log('rest', 'WordPress object cache flush returned false.', 1);
+
+        return [
+            'status'  => 'failed',
+            'message' => __('wp_cache_flush() returned false.', 'ssgs'),
+        ];
+    }
+
+    private static function purgeSiteGroundCache(): array {
+        $hasFunction = function_exists('sg_cachepress_purge_cache');
+        $hasAction = has_action('sg_cachepress_purge_cache') !== false;
+
+        if (!$hasFunction && !$hasAction) {
+            return [
+                'status'  => 'skipped',
+                'message' => __('SiteGround Optimizer cache not detected on this site.', 'ssgs'),
+            ];
+        }
+
+        try {
+            if ($hasFunction) {
+                sg_cachepress_purge_cache();
+            } else {
+                do_action('sg_cachepress_purge_cache');
+            }
+        } catch (\Throwable $e) {
+            Logger::log('rest', 'SiteGround cache purge failed: ' . $e->getMessage(), 1);
+
+            return [
+                'status'  => 'failed',
+                'message' => sprintf(__('SiteGround cache purge failed: %s', 'ssgs'), $e->getMessage()),
+            ];
+        }
+
+        Logger::log('rest', 'SiteGround cache purge triggered via REST.');
+
+        return [
+            'status'  => 'flushed',
+            'message' => __('SiteGround cache purge triggered.', 'ssgs'),
+        ];
+    }
+
+    private static function appendCacheNotes(string $message, array ...$results): string {
+        $notes = [];
+        foreach ($results as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+            $note = isset($result['message']) ? trim((string) $result['message']) : '';
+            if ($note !== '') {
+                $notes[] = sanitize_text_field($note);
+            }
+        }
+
+        if (empty($notes)) {
+            return $message;
+        }
+
+        return trim($message . ' ' . implode(' ', $notes));
     }
 }

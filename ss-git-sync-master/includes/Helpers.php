@@ -237,7 +237,9 @@ function record_secondary_status(string $label, array $status): void {
         $stored = [];
     }
 
-    $timestamp = isset($status['timestamp']) && is_numeric($status['timestamp']) ? (int) $status['timestamp'] : time();
+    $timestamp = isset($status['timestamp']) && is_numeric($status['timestamp'])
+        ? (int) $status['timestamp']
+        : (int) current_time('timestamp');
     $action = sanitize_key($status['action'] ?? '');
     $result = sanitize_key($status['status'] ?? '');
     $message = sanitize_textarea_field($status['message'] ?? '');

@@ -613,9 +613,32 @@ class Admin {
                             ];
                             ?>
                             <div class="ssgsm-status-filters" data-ssgsm-status-filters>
-                                <button type="button" class="ssgsm-chip-button is-active" data-status-filter="all"><?php esc_html_e('All', 'ssgs'); ?></button>
+                                <button type="button" class="ssgsm-chip-button is-active" data-status-filter="all"><?php esc_html_e('All Results', 'ssgs'); ?></button>
                                 <button type="button" class="ssgsm-chip-button" data-status-filter="success"><?php esc_html_e('Success', 'ssgs'); ?></button>
                                 <button type="button" class="ssgsm-chip-button" data-status-filter="error"><?php esc_html_e('Errors', 'ssgs'); ?></button>
+                                <button type="button" class="ssgsm-chip-button" data-status-filter="unknown"><?php esc_html_e('Never Run', 'ssgs'); ?></button>
+                            </div>
+                            <div class="ssgsm-status-filters" data-ssgsm-action-filters>
+                                <button type="button" class="ssgsm-chip-button is-active" data-action-filter="all"><?php esc_html_e('All Actions', 'ssgs'); ?></button>
+                                <?php foreach (['token', 'import', 'cache', 'none'] as $actionKey) :
+                                    $label = '';
+                                    if (isset($actionLabels[$actionKey])) {
+                                        $label = $actionLabels[$actionKey];
+                                    } elseif ($actionKey === 'none') {
+                                        $label = __('Never Triggered', 'ssgs');
+                                    }
+                                    if ($label === '') {
+                                        continue;
+                                    }
+                                    ?>
+                                    <button type="button" class="ssgsm-chip-button" data-action-filter="<?php echo esc_attr($actionKey); ?>">
+                                        <?php echo esc_html($label); ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="ssgsm-toggle-search">
+                                <label class="screen-reader-text" for="ssgsm-status-search"><?php esc_html_e('Search site statuses', 'ssgs'); ?></label>
+                                <input type="search" id="ssgsm-status-search" placeholder="<?php esc_attr_e('Search by site or message…', 'ssgs'); ?>" data-ssgsm-status-search>
                             </div>
                             <table class="widefat fixed striped ssgsm-status-table">
                                 <thead>
@@ -651,6 +674,10 @@ class Admin {
                             if ($rowStatus === '') {
                                 $rowStatus = 'unknown';
                             }
+                            $rowAction = $action !== '' ? sanitize_key($action) : 'none';
+                            if ($rowAction === '') {
+                                $rowAction = 'none';
+                            }
                             $badgeClass = 'ssgsm-status-badge';
                             if ($rowStatus === 'success') {
                                 $badgeClass .= ' ssgsm-status-badge--success';
@@ -659,8 +686,16 @@ class Admin {
                             } else {
                                 $badgeClass .= ' ssgsm-status-badge--unknown';
                             }
+                            $rowLabelAttr = sanitize_text_field($labelDisplay);
+                            $rowMessageAttr = sanitize_text_field($messageText);
                             ?>
-                            <tr data-ssgsm-status-row data-status="<?php echo esc_attr($rowStatus); ?>">
+                            <tr
+                                data-ssgsm-status-row
+                                data-status="<?php echo esc_attr($rowStatus); ?>"
+                                data-action="<?php echo esc_attr($rowAction); ?>"
+                                data-label="<?php echo esc_attr($rowLabelAttr); ?>"
+                                data-message="<?php echo esc_attr($rowMessageAttr); ?>"
+                            >
                                 <td><?php echo esc_html($labelDisplay); ?></td>
                                 <td><?php echo esc_html($actionDisplay); ?></td>
                                 <td><span class="<?php echo esc_attr($badgeClass); ?>"><?php echo esc_html($resultDisplay); ?></span></td>
@@ -808,27 +843,70 @@ class Admin {
                     });
                 });
 
+                const statusRows = document.querySelectorAll('[data-ssgsm-status-row]');
                 const statusFilterContainer = document.querySelector('[data-ssgsm-status-filters]');
-                if (statusFilterContainer) {
-                    const filterButtons = statusFilterContainer.querySelectorAll('[data-status-filter]');
-                    const statusRows = document.querySelectorAll('[data-ssgsm-status-row]');
+                const actionFilterContainer = document.querySelector('[data-ssgsm-action-filters]');
+                const statusSearchInput = document.querySelector('[data-ssgsm-status-search]');
 
-                    statusFilterContainer.addEventListener('click', function(event) {
-                        const button = event.target.closest('[data-status-filter]');
-                        if (!button) {
-                            return;
-                        }
-                        event.preventDefault();
-                        const filter = button.getAttribute('data-status-filter');
-                        filterButtons.forEach(function(otherButton) {
-                            otherButton.classList.toggle('is-active', otherButton === button);
-                        });
+                if (statusRows.length) {
+                    let activeStatus = 'all';
+                    let activeAction = 'all';
+                    let searchTerm = '';
+
+                    const applyStatusFilters = function() {
+                        const term = searchTerm.trim().toLowerCase();
                         statusRows.forEach(function(row) {
-                            const rowStatus = row.getAttribute('data-status') || '';
-                            const shouldShow = filter === 'all' || rowStatus === filter;
-                            row.hidden = !shouldShow;
+                            const rowStatus = (row.getAttribute('data-status') || 'unknown').toLowerCase();
+                            const rowAction = (row.getAttribute('data-action') || 'none').toLowerCase();
+                            const label = (row.getAttribute('data-label') || '').toLowerCase();
+                            const message = (row.getAttribute('data-message') || '').toLowerCase();
+
+                            const matchesStatus = activeStatus === 'all' || rowStatus === activeStatus;
+                            const matchesAction = activeAction === 'all' || rowAction === activeAction;
+                            const matchesSearch = term === '' || (label + ' ' + message).includes(term);
+
+                            row.hidden = !(matchesStatus && matchesAction && matchesSearch);
                         });
-                    });
+                    };
+
+                    if (statusFilterContainer) {
+                        const statusButtons = statusFilterContainer.querySelectorAll('[data-status-filter]');
+                        statusFilterContainer.addEventListener('click', function(event) {
+                            const button = event.target.closest('[data-status-filter]');
+                            if (!button) {
+                                return;
+                            }
+                            event.preventDefault();
+                            activeStatus = button.getAttribute('data-status-filter') || 'all';
+                            statusButtons.forEach(function(otherButton) {
+                                otherButton.classList.toggle('is-active', otherButton === button);
+                            });
+                            applyStatusFilters();
+                        });
+                    }
+
+                    if (actionFilterContainer) {
+                        const actionButtons = actionFilterContainer.querySelectorAll('[data-action-filter]');
+                        actionFilterContainer.addEventListener('click', function(event) {
+                            const button = event.target.closest('[data-action-filter]');
+                            if (!button) {
+                                return;
+                            }
+                            event.preventDefault();
+                            activeAction = button.getAttribute('data-action-filter') || 'all';
+                            actionButtons.forEach(function(otherButton) {
+                                otherButton.classList.toggle('is-active', otherButton === button);
+                            });
+                            applyStatusFilters();
+                        });
+                    }
+
+                    if (statusSearchInput) {
+                        statusSearchInput.addEventListener('input', function(event) {
+                            searchTerm = event.target.value || '';
+                            applyStatusFilters();
+                        });
+                    }
                 }
             })();
         </script>
@@ -936,7 +1014,7 @@ class Admin {
             $failed = $report['failed'] ?? [];
             $errors = $report['errors'] ?? [];
 
-            $now = time();
+            $now = (int) current_time('timestamp');
             foreach ($successMap as $label => $messageText) {
                 Support\record_secondary_status($label, [
                     'timestamp' => $now,
@@ -1030,7 +1108,7 @@ class Admin {
             $failed = $report['failed'] ?? [];
             $errors = $report['errors'] ?? [];
 
-            $now = time();
+            $now = (int) current_time('timestamp');
             foreach ($report['success'] ?? [] as $label => $messageText) {
                 Support\record_secondary_status($label, [
                     'timestamp' => $now,
@@ -1123,7 +1201,7 @@ class Admin {
             $failed = $report['failed'] ?? [];
             $errors = $report['errors'] ?? [];
 
-            $now = time();
+            $now = (int) current_time('timestamp');
             foreach ($report['success'] ?? [] as $label => $messageText) {
                 Support\record_secondary_status($label, [
                     'timestamp' => $now,
